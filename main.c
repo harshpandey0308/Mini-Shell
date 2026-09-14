@@ -43,7 +43,13 @@ int main(){
         close(arr[1]);
         close(arr0[0]);
 
-        write(arr0[1] , "R" , 2);
+        int s_flag = write(arr0[1] , "R" , 2);
+        if(s_flag > -1){
+            printf("number of bytes written : %d.\n",s_flag);
+        }
+        else{
+            printf("write is unsuccessfull.\n");
+        }
         //keep(arr[0]);
         int byte = read(arr[0] , buffer , 11);
         
