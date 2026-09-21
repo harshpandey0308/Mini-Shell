@@ -6,20 +6,38 @@
 
 #define MAX_SIZE 100
 
+typedef enum{
+    NORMAL = 1,
+    STATUS = 2,
+    URGENT = 3,
+    CRITICAL = 4,
+    VERY_CRITICAL  = 5
+}MSG_TYP;
+
 typedef struct{
     long mtype;
     char mtext[MAX_SIZE];
 }msgbuf;
 
 int main(){
-    size_t msgsz;
+    size_t msgsz1;
 
-    msgbuf msgp;
+    size_t msgsz2;
 
-    msgp.mtype = 1;
-    strcpy(msgp.mtext , "hello , mq");
+    msgbuf msgp1;
 
-    msgsz = strlen(msgp.mtext);
+    msgbuf msgp2;
+
+    msgp1.mtype = 2;
+    strcpy(msgp1.mtext , "puta madares");
+
+    msgsz1 = strlen(msgp1.mtext);
+
+    msgp2.mtype = 3;
+
+    strcpy(msgp2.mtext , "i am harsh");
+
+    msgsz2 = strlen(msgp2.mtext);
 
     key_t key = ftok("/tmp" , 'A');
 
@@ -37,10 +55,18 @@ int main(){
     else{
         printf("the queue found successfully and the qid is %d.\n",msgqid);
        
-        int snd_flg = msgsnd(msgqid , &msgp , msgsz , 0);
+        int snd_flg = msgsnd(msgqid , &msgp1 , msgsz1 , 0);
 
-        if(snd_flg == 0){
-            printf("the message send successfully.\n");
+        int snd2 = msgsnd(msgqid , &msgp2 , msgsz2 , 0);
+
+        if(snd_flg == -1){
+            perror("message send failed");
+            exit(EXIT_FAILURE);
+        }
+
+        if(snd2 == -1){
+            perror("message 2 send failed");
+            exit(EXIT_FAILURE);
         }
     }
 
