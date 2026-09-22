@@ -2,6 +2,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<unistd.h>
+#include<sys/types.h>
 #include<sys/msg.h>
 
 #define MAX_SIZE 100
@@ -20,54 +21,65 @@ typedef struct{
 }msgbuf;
 
 int main(){
-    size_t msgsz1;
-
-    size_t msgsz2;
-
-    msgbuf msgp1;
-
-    msgbuf msgp2;
-
-    msgp1.mtype = 2;
-    strcpy(msgp1.mtext , "puta madares");
-
-    msgsz1 = strlen(msgp1.mtext);
-
-    msgp2.mtype = 3;
-
-    strcpy(msgp2.mtext , "i am harsh");
-
-    msgsz2 = strlen(msgp2.mtext);
-
     key_t key = ftok("/tmp" , 'A');
 
     if(key == -1){
-        perror("ftok failed , no such process exist");
+        perror("queue creation failed");
         exit(EXIT_FAILURE);
     }
-    
-    int msgqid = msgget(key , IPC_CREAT | 0666);
 
-    if(msgqid == -1){
-        perror("msgget() failed ");
+    int qid = msgget(key , IPC_CREAT | 0666);
+
+    if(qid == -1){
+        perror("the queue id failed");
+        exit(EXIT_FAILURE);
+    }
+
+    msgbuf msgp1;
+    size_t msgsz1;
+
+    msgbuf msgp2;
+    size_t msgsz2;
+
+    msgbuf msgp3;
+    size_t msgsz3;
+
+    msgp1.mtype = 1;
+    msgp2.mtype = 2;
+    msgp3.mtype = 3;
+
+    strcpy(msgp1.mtext , "hello");
+    strcpy(msgp2.mtext , ", I am Harsh");
+    strcpy(msgp3.mtext , ", your personal health care companion");
+
+    msgsz1 = strlen(msgp1.mtext);
+    msgsz2 = strlen(msgp2.mtext);
+    msgsz3 = strlen(msgp3.mtext);
+
+    ssize_t snd1 = msgsnd(qid , &msgp1 , msgsz1 , 0);
+    if(snd1 == -1){
+        perror("sending message 1 failed");
+        exit(EXIT_FAILURE);
+    }else{
+        printf("the message of type %ld is send.\n",msgp1.mtype);
+    }
+
+    ssize_t snd2 = msgsnd(qid , &msgp2 , msgsz2 , 0);
+    if(snd2 == -1){
+        perror("sending message 2 failed");
         exit(EXIT_FAILURE);
     }
     else{
-        printf("the queue found successfully and the qid is %d.\n",msgqid);
-       
-        int snd_flg = msgsnd(msgqid , &msgp1 , msgsz1 , 0);
+        printf("the message of type %ld is send.\n",msgp2.mtype);
+    }
 
-        int snd2 = msgsnd(msgqid , &msgp2 , msgsz2 , 0);
-
-        if(snd_flg == -1){
-            perror("message send failed");
-            exit(EXIT_FAILURE);
-        }
-
-        if(snd2 == -1){
-            perror("message 2 send failed");
-            exit(EXIT_FAILURE);
-        }
+    ssize_t snd3 = msgsnd(qid , &msgp3 , msgsz3 , 0);
+    if(snd3 == -1){
+        perror("sending message 3 failed");
+        exit(EXIT_FAILURE);
+    }
+    else{
+        printf("the message of type %ld is send.\n",msgp3.mtype);
     }
 
     return 0;
