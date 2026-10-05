@@ -2,99 +2,120 @@
 #include<stdlib.h>
 #include<string.h>
 #include<stdbool.h>
+#include<err.h>
 #include<sys/types.h>
 #include<unistd.h>
 #include<sys/shm.h>
 #include<sys/sem.h>
 #include<sys/ipc.h>
+#include<sys/wait.h>
 
 #define SIZE 100
 
-struct sembuf{
-    unsigned int sem_num;
-    int sem_op;
-    int sem_flg;
-};
+typedef union semun{
+    int val;
+    struct semid_ds *buf;
+    unsigned short *arr;
+    struct seminfo *_buf;
+}semun;
 
 int main(){
-    key_t key = ftok("/tmp" , 'A');  //key for getting identifier
+    struct sembuf sops;
+    semun sem;
+
+    sops.sem_num = 0;
+    sops.sem_op = 0;
+    sops.sem_flg = 0;
+
+    key_t key = ftok("/tmp" , 'A');
 
     if(key == -1){
-        printf("key failed");
-        exit(EXIT_FAILURE);
+        err(EXIT_FAILURE , "ftok");
     }
 
-    int shmid = shmget(key , SIZE , IPC_CREAT | 0666);  // shared memory identifier
-
-    int semid = semget(key , 1 , IPC_CREAT);   // semaphore set identifier
+    int shmid = shmget(key , SIZE , IPC_CREAT | 0666);
 
     if(shmid == -1){
-        perror("Invalid id");
-        exit(EXIT_FAILURE);
+       err(EXIT_FAILURE , "shmget");
     }
 
-    ssize_t sem = semctl(semid , 0 , SETVAL , 0);  // initializing value of semaphore 
+    int semid = semget(key , 1 , IPC_CREAT | 0666);
 
-    sem_buf *sops;  // a pointer to struct
-
-    sops->sem_num = 0;
-    sops->sem_op = 0;
-    sops->sem_flg = 0;
-
-    char *shaddr = shmat(shmid , NULL , 0); // getting address from shmat
-
-    if(shaddr == (void *)-1){
-      perror("failed");
-      exit(EXIT_FAILURE);
+    if(semid == -1){
+        err(EXIT_FAILURE , "semget");
     }
 
-    pid_t pid = fork(); // generating child process
+    sem.val = 0;
+    
+    if(semctl(semid , 0 , SETVAL , sem) == -1){
+        err(EXIT_FAILURE , "semctl");
+    }
+
+    pid_t pid = fork();
 
     if(pid == 0){
-        printf("PID of child process is %d.\n", getpid());
+        char *shmptr = shmat(shmid , NULL , 0);
 
-        if(sops->sem_op > 0){
-           char buffer[10];
-
-           strcpy(buffer , shaddr);
-        }
-        else if(sops->sem_op < 0){
-            
+        if(shmptr == (void *)-1){
+            err(EXIT_FAILURE , "shmat");
         }
 
-        
-       
-        printf("Child process reading from the shared memory : %s.\n",buffer);
+        sops.sem_op = -1;
+
+        int ss = semop(semid , &sops , 1);
+
+        if(ss == -1){
+            err(EXIT_FAILURE , "semop");
+        }
+
+        if(ss == 0){
+            char buff[6];
+
+            strcpy(buff , shmptr);
+
+            printf("received message : %s.\n",buff);
+        }
+
+        int dt = shmdt(shmptr);
+
+        if(dt == -1){
+            err(EXIT_FAILURE , "shmdt");
+        }
+
+        exit(0);
     }
     else if(pid > 0){
-        printf("PID of parent process is %d.\n",getpid());
+        char *shmaddr = shmat(shmid , NULL , 0);
 
-        strcpy(shaddr , "Hello hey");
+        if(shmaddr == (void *)-1){
+            err(EXIT_FAILURE , "shmat");
+        }
 
-        sops->sem_op = sops->sem_op - 1;
+        strcpy(shmaddr , "HELLO");
 
-        int op_success = semop(semid , sops , 1);
+        sops.sem_op = 1;
 
-        if(op_success == -1){
-            perror("operation failed in parent process");
-            exit(-1);
+        int sp = semop(semid , &sops , 1);
+
+        if(sp == -1){
+            err(EXIT_FAILURE , "semop");
         }
 
         wait(NULL);
 
+        int dt1 = shmdt(shmaddr);
+
+        if(dt1 == -1){
+            err(EXIT_FAILURE , "shmdt");
+        }
+
+        shmctl(shmid , IPC_RMID , NULL);
+
+        semctl(semid , 0 , IPC_RMID);
+
         exit(0);
-    }
-    else{
-        perror("shared memory failed");
-        exit(EXIT_FAILURE);
-    }
-
-    int s = shmdt(shaddr);
-
-    if(s == -1){
-        perror("shmdt failed");
-        exit(EXIT_FAILURE);
     }
 
     return 0;
+
 }
