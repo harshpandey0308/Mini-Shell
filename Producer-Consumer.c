@@ -9,7 +9,7 @@
 #include<sys/shm.h>
 #include<sys/ipc.h>
 
-#define SLOT 2
+#define SLOT 4
 #define SIZE 20
 
 typedef union semun{
@@ -83,7 +83,7 @@ int main(){
 
             strcpy(buffer , slot);
 
-            printf("the received message is %s.\n",buffer);
+            printf("Message 1 :  %s.\n",buffer);
 
             consumer_index = (consumer_index + 1)%SLOT;
 
