@@ -22,6 +22,8 @@ typedef union semun{
 int main(){
     struct sembuf sops;
     semun sem;
+    int empty = 0;
+    int full = 0;
 
     sops.sem_num = 0;
     sops.sem_op = 0;
@@ -39,17 +41,24 @@ int main(){
        err(EXIT_FAILURE , "shmget");
     }
 
-    int semid = semget(key , 1 , IPC_CREAT | 0666);
+    int semid = semget(key , 2 , IPC_CREAT | 0666);
 
     if(semid == -1){
         err(EXIT_FAILURE , "semget");
     }
 
-    sem.val = 0;
-    
-    if(semctl(semid , 0 , SETVAL , sem) == -1){
+    int n=2;
+
+    empty = n;
+
+    for(int i=0 ; i<n ; i++){
+       if(semctl(semid , i , SETVAL , sem) == -1){
         err(EXIT_FAILURE , "semctl");
+       }
     }
+    
+    sem.array[0] = 3;
+    sem.array[1] = 0;
 
     pid_t pid = fork();
 
@@ -59,6 +68,8 @@ int main(){
         if(shmptr == (void *)-1){
             err(EXIT_FAILURE , "shmat");
         }
+
+        sem.arr[0] = 3;
 
         sops.sem_op = -1;
 
@@ -76,6 +87,10 @@ int main(){
             printf("received message : %s.\n",buff);
         }
 
+        signal(empty);
+
+        
+
         int dt = shmdt(shmptr);
 
         if(dt == -1){
@@ -91,17 +106,28 @@ int main(){
             err(EXIT_FAILURE , "shmat");
         }
 
-        strcpy(shmaddr , "HELLO");
+        
 
-        sops.sem_op = 1;
+        while(wait(&empty) == 0){
+            char buffer[10];
 
-        int sp = semop(semid , &sops , 1);
+            if(fgets(buffer , sizeof(buffer) , stdin) == NULL){
+                err(EXIT_FAILURE , "fgets");
+            }
 
-        if(sp == -1){
-            err(EXIT_FAILURE , "semop");
+            sprintf(shmaddr , "%s" , buffer);
+
+            sops.sem_op = 1;
+
+            int sp = semop(semid , &sops , 1);
+
+            if(sp == -1){
+                err(EXIT_FAILURE , "semop");
+            }
+
+            signal(full);
+
         }
-
-        wait(NULL);
 
         int dt1 = shmdt(shmaddr);
 
