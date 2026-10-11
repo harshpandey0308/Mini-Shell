@@ -1,0 +1,192 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/ipc.h>
+#include<sys/wait.h>
+#include<sys/sem.h>
+#include<sys/shm.h>
+#include<err.h>
+
+#define SLOT 3
+#define SIZE 20
+
+typedef union semun{
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+    struct seminfo *_buf;
+}semun;
+
+int main(){
+    key_t key = ftok("/tmp" , 'B');
+
+    if(key == -1){
+        err(EXIT_FAILURE , "Key");
+    }
+
+    int shmid = shmget(key , SLOT*SIZE , IPC_CREAT | 0644);
+
+    if(shmid == -1){
+        err(EXIT_FAILURE , "shmget");
+    }
+
+    int semid = semget(key , 3 , IPC_CREAT | 0644);
+
+    if(semid == -1){
+        err(EXIT_FAILURE , "semget");
+    }
+
+    semun sem;
+
+    sem.val = 3;
+    if(semctl(semid , 0 , SETVAL , sem) == -1){
+        err(EXIT_FAILURE , "semctl");
+    }
+
+    sem.val = 0;
+    if(semctl(semid , 1 , SETVAL , sem) == -1){
+        err(EXIT_FAILURE , "semctl");
+    }
+
+    sem.val = 1;
+    if(semctl(semid , 2 , SETVAL , sem) == -1){
+        err(EXIT_FAILURE , "semctl");
+    }
+
+    pid_t pid = fork();
+
+    if(pid == -1){
+      err(EXIT_FAILURE , "fork");
+    }
+
+    if(pid == 0){
+        char *shmaddr = shmat(shmid , NULL , 0);
+
+        if(shmaddr == (void *)-1){
+            err(EXIT_FAILURE , "shmat");
+        }
+
+        struct sembuf sops;
+
+        int consumer_index = 0;
+
+        for(int i=0 ; i<SLOT ; i++){
+            char buffer[SIZE];
+
+            sops.sem_num = 1;
+            sops.sem_op = -1;
+            sops.sem_flg = 0;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop empty");
+            }
+
+            sops.sem_num = 2;
+            sops.sem_op = -1;
+            sops.sem_flg = 0;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop mutex");
+            }
+
+            char *slot = shmaddr + consumer_index*SIZE;
+
+            strcpy(buffer , slot);
+
+            printf("Message Received : %s\n",buffer);
+
+            consumer_index = (consumer_index + 1)%SLOT;
+
+            sops.sem_num = 2;
+            sops.sem_op = 1;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop");
+            }
+
+            sops.sem_num = 0;
+            sops.sem_op = 1;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop full");
+            }
+        }
+
+        if(shmdt(shmaddr) == -1){
+            err(EXIT_FAILURE , "shmdt");
+        }
+
+        exit(EXIT_SUCCESS);
+    }
+    else{
+        char *shm = shmat(shmid , NULL , 0);
+
+        if(shm == (void *)-1){
+            err(EXIT_FAILURE , "shmat");
+        }
+
+        int producer_index = 0;
+
+        char buffer[SIZE];
+
+        struct sembuf sops;
+
+        for(int i=0 ; i<SLOT ; i++){
+            sops.sem_num = 0;
+            sops.sem_op = -1;
+            sops.sem_flg = 0;
+
+            printf("enter the message : \n");
+
+            if(fgets(buffer , sizeof(buffer) , stdin) == NULL){
+                err(EXIT_FAILURE , "fgets");
+            }
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop");
+            }
+
+            sops.sem_num = 2;
+            sops.sem_op = -1;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop mutex");
+            }
+
+            char *slot = shm + SIZE*producer_index;
+
+            strcpy(slot , buffer);
+
+            producer_index = (producer_index + 1)%SLOT;
+
+            sops.sem_num = 2;
+            sops.sem_op = 1;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop mutex");
+            }
+
+            sops.sem_num = 1;
+            sops.sem_op = 1;
+
+            if(semop(semid , &sops , 1) == -1){
+                err(EXIT_FAILURE , "semop full");
+            }
+
+        }
+
+        wait(NULL);
+
+        if(shmdt(shm) == -1){
+            err(EXIT_FAILURE , "shmdt");
+        }
+
+        shmctl(shmid , IPC_RMID , 0);
+
+        semctl(semid , 0 , IPC_RMID);
+
+        exit(EXIT_SUCCESS);
+    }
+}
