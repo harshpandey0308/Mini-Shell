@@ -19,7 +19,7 @@ int main(){
 
     key_t key2 = ftok("/tmp" , 'A');
 
-    int qid = msgget(key2 , IPC_CREAT | 0666);
+    int qid = msgget(key2 , IPC_CREAT | 0400);
 
     if(qid == -1){
         printf("Queue creation failed.\n");
