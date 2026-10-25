@@ -72,6 +72,12 @@ int main(){
         err(EXIT_FAILURE , "sempost full");
     }
 
+    printf("updated write_index = %d.\n",map_mem->write_index);
+
+    printf("the message is %s.\n" , map_mem->buffer[0]);
+
+    printf("read_index = %d.\n",map_mem->read_index);
+
     return 0;
 
 }
