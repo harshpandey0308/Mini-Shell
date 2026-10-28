@@ -40,31 +40,39 @@ int main(){
         err(EXIT_FAILURE , "MMAP");
     }
     
-    if(sem_wait(sem_full) == -1){
-        err(EXIT_FAILURE , "semwait");
-    }
-
-    if(sem_wait(sem_mutex) == -1){
-        err(EXIT_FAILURE , "semwait mutex");
-    }
+    
 
     char buffer[20];
 
-    snprintf(buffer , sizeof(shm_map->buffer) , "%s" , shm_map->buffer[shm_map->read_index]);
+    for(int i=0 ; i<SLOT ; i++){
+        if(sem_wait(sem_full) == -1){
+           err(EXIT_FAILURE , "semwait");
+        }
 
-    shm_map->read_index = (shm_map->read_index + 1)%SLOT;
+        if(sem_wait(sem_mutex) == -1){
+            err(EXIT_FAILURE , "semwait mutex");
+        }
 
-    if(sem_post(sem_empty) == -1){
-        err(EXIT_FAILURE , "sempost");
+        snprintf(buffer , sizeof(buffer) , "%s" , shm_map->buffer[shm_map->read_index]);
+
+        shm_map->read_index = (shm_map->read_index + 1)%SLOT;
+
+        //sleep(20);
+
+        if(sem_post(sem_mutex) == -1){
+            err(EXIT_FAILURE , "sempost mutex");
+        }
+
+        if(sem_post(sem_empty) == -1){
+            err(EXIT_FAILURE , "sempost");
+        }
+
+        printf("updated read index = %d.\n",shm_map->read_index);
+        printf("write_index = %d.\n",shm_map->write_index);
+        printf("message received = %s.\n",buffer);
+
     }
 
-    if(sem_post(sem_mutex) == -1){
-        err(EXIT_FAILURE , "sempost mutex");
-    }
-
-    printf("updated read index = %d.\n",shm_map->read_index);
-    printf("write_index = %d.\n",shm_map->write_index);
-    printf("message received = %s.\n",buffer);
-
+    
     return 0;
 }

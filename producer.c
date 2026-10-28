@@ -52,32 +52,41 @@ int main(){
     printf("Write Index = %u.\n",map_mem->write_index);
     printf("Size of shared memory = %ld.\n",sizeof(Shared_Mem));
 
-    if(sem_wait(sem_empty) == -1){
-        err(EXIT_FAILURE , "semwait");
+    for(int i=0 ; i<4 ; i++){
+       if(sem_wait(sem_empty) == -1){
+          err(EXIT_FAILURE , "semwait");
+        }
+
+        if(sem_wait(sem_mutex) == -1){
+            err(EXIT_FAILURE , "semwait mutex");
+        }
+
+        char buffer[5];
+
+        printf("the message is .");
+        scanf("%s",buffer);
+
+        snprintf(map_mem->buffer[map_mem->write_index] , 5 , "%s" , buffer);
+
+        map_mem->write_index = (map_mem->write_index + 1)%SLOT;
+
+        if(sem_post(sem_mutex) == -1){
+            err(EXIT_FAILURE , "sempost");
+        }
+
+        if(sem_post(sem_full) == -1){
+            err(EXIT_FAILURE , "sempost full");
+        }
+
+        printf("updated write_index = %d.\n",map_mem->write_index);
+
+        printf("the message is %s.\n" , map_mem->buffer[0]);
+
+        printf("read_index = %d.\n",map_mem->read_index);
+
     }
 
-    if(sem_wait(sem_mutex) == -1){
-        err(EXIT_FAILURE , "semwait mutex");
-    }
-
-    snprintf(map_mem->buffer[map_mem->write_index] , 5 , "%s" , "HELL");
-
-    map_mem->write_index = (map_mem->write_index + 1)%SLOT;
-
-    if(sem_post(sem_mutex) == -1){
-        err(EXIT_FAILURE , "sempost");
-    }
-
-    if(sem_post(sem_full) == -1){
-        err(EXIT_FAILURE , "sempost full");
-    }
-
-    printf("updated write_index = %d.\n",map_mem->write_index);
-
-    printf("the message is %s.\n" , map_mem->buffer[0]);
-
-    printf("read_index = %d.\n",map_mem->read_index);
-
+    
     return 0;
 
 }
