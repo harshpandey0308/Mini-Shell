@@ -73,6 +73,36 @@ int main(){
 
     }
 
+    int mem_unmap = munmap(shm_map , sizeof(Shared_Mem));
+    if(mem_unmap == -1){
+        err(EXIT_FAILURE , "munmap");
+    }
+
+    int close_fd = close(shmfd);
+    if(close_fd == -1){
+        err(EXIT_FAILURE , "close");
+    }
+
+    int unlink = shm_unlink("/shm");
+    if(unlink == -1){
+        err(EXIT_FAILURE , "unlink shared memory");
+    }
+
+    int empty_unlink = sem_unlink("/p_empty");
+    if(empty_unlink == -1){
+        err(EXIT_FAILURE , "SEMUNLINK");
+    }
+
+    int full_unlink = sem_unlink("/p_full");
+    if(full_unlink == -1){
+        err(EXIT_FAILURE , "SEM_UNLINK");
+    }
+
+    int mutex_unlink = sem_unlink("/p_mutex");
+    if(mutex_unlink == -1){
+        err(EXIT_FAILURE , "mutex Unlink");
+    }
+    
     
     return 0;
 }

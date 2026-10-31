@@ -86,6 +86,15 @@ int main(){
 
     }
 
+    int mem_unmap = munmap(map_mem , sizeof(Shared_Mem));
+    if(mem_unmap == -1){
+        err(EXIT_FAILURE , "munmap");
+    }
+
+    int close_fd = close(shmfd);
+    if(close_fd == -1){
+        err(EXIT_FAILURE , "close");
+    }
     
     return 0;
 
