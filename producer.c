@@ -9,6 +9,11 @@
 #include"share.h"
 
 int main(){
+    sem_t *sem_consumer = sem_open("/p_consumer_alert" , O_CREAT | O_EXCL , 0644 , 0);
+    if(sem_consumer ==  SEM_FAILED){
+        err(EXIT_FAILURE , "semaphore failed");
+    }
+
     sem_t *sem_empty  = sem_open("/p_empty" , O_CREAT | O_EXCL , 0644 , 4); // created a named semaphore
 
     if(sem_empty == SEM_FAILED){
@@ -64,7 +69,9 @@ int main(){
         char buffer[5];
 
         printf("the message is .");
-        scanf("%s",buffer);
+        if(fgets(buffer , sizeof(buffer) , stdin) == NULL){
+            err(EXIT_FAILURE , "fgets");
+        }
 
         snprintf(map_mem->buffer[map_mem->write_index] , 5 , "%s" , buffer);
 
@@ -80,15 +87,64 @@ int main(){
 
         printf("updated write_index = %d.\n",map_mem->write_index);
 
-        printf("the message is %s.\n" , map_mem->buffer[0]);
+        printf("the message is %s.\n" , map_mem->buffer[i]);
 
         printf("read_index = %d.\n",map_mem->read_index);
 
     }
 
+    if(sem_wait(sem_consumer) == -1){
+        err(EXIT_FAILURE , "sem_wait");
+    }
+
     int mem_unmap = munmap(map_mem , sizeof(Shared_Mem));
     if(mem_unmap == -1){
         err(EXIT_FAILURE , "munmap");
+    }
+
+    int consumer_close = sem_close(sem_consumer);
+    if(consumer_close == -1){
+        err(EXIT_FAILURE , "sem_close");
+    }
+
+    int close_empty = sem_close(sem_empty);
+    if(close_empty == -1){
+        err(EXIT_FAILURE , "sem_close");
+    }
+
+    int full_close = sem_close(sem_full);
+    if(full_close == -1){
+        err(EXIT_FAILURE , "sem_Close");
+    }
+
+    int mutex_close = sem_close(sem_mutex);
+    if(mutex_close == -1){
+        err(EXIT_FAILURE  , "sem_close");
+    }
+
+    int consumer_unlink = sem_unlink("/p_consumer_alert");
+    if(consumer_unlink == -1){
+        err(EXIT_FAILURE , "consumer_unlink");
+    }
+
+    int empty_unlink = sem_unlink("/p_empty");
+    if(empty_unlink == -1){
+        err(EXIT_FAILURE , "SEMUNLINK");
+    }
+
+    int full_unlink = sem_unlink("/p_full");
+    if(full_unlink == -1){
+        err(EXIT_FAILURE , "SEM_UNLINK");
+    }
+
+    int mutex_unlink = sem_unlink("/p_mutex");
+    if(mutex_unlink == -1){
+        err(EXIT_FAILURE , "mutex Unlink");
+    }
+
+    int unlink = shm_unlink("/shm");
+    if(unlink == -1){
+        err(EXIT_FAILURE , "unlink shared memory");
     }
 
     int close_fd = close(shmfd);

@@ -3,9 +3,10 @@
 #include<stdio.h>
 
 int main(){
-    sem_unlink("p_empty");
-    sem_unlink("p_full");
-    sem_unlink("p_mutex");
+    sem_unlink("/p_consumer_alert");
+    sem_unlink("/p_empty");
+    sem_unlink("/p_full");
+    sem_unlink("/p_mutex");
     shm_unlink("/shm");
 
     puts("IPC resources are unlinked");
