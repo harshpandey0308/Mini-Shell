@@ -6,9 +6,21 @@
 #include<sys/stat.h>
 #include<unistd.h>
 #include<err.h>
+#include<time.h>
 #include"share.h"
 
+
+
 int main(){
+    struct timespec tp;
+
+    int time_ = clock_gettime(CLOCK_REALTIME , &tp);
+    if(time_ == -1){
+        err(EXIT_FAILURE , "get time");
+    }
+
+    printf("the starting time is %ld.\n",tp.tv_sec);
+
     sem_t *sem_consumer = sem_open("/p_consumer_alert" , O_CREAT | O_EXCL , 0644 , 0);
     if(sem_consumer ==  SEM_FAILED){
         err(EXIT_FAILURE , "semaphore failed");
@@ -151,6 +163,13 @@ int main(){
     if(close_fd == -1){
         err(EXIT_FAILURE , "close");
     }
+
+    int time_1 = clock_gettime(CLOCK_REALTIME , &tp);
+    if(time_1 == -1){
+        err(EXIT_FAILURE , "get time");
+    }
+
+    printf("the ending time is %ld.\n",tp.tv_sec);
     
     return 0;
 
