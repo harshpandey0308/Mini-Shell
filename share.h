@@ -8,6 +8,7 @@ typedef struct Shared_Mem{
     char buffer[SLOT][SIZE];
     unsigned int read_index;
     unsigned int write_index;
+    pid_t consumer_id;
 }Shared_Mem;
 
 #endif

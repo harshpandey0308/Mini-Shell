@@ -14,17 +14,22 @@ int main(){
         err(EXIT_FAILURE , "semaphore failed");
     } 
 
+
+
     sem_t *sem_empty = sem_open("/p_empty" , 0);
 
     if(sem_empty == SEM_FAILED){
         err(EXIT_FAILURE , "semopen");
     }
 
+
+
     sem_t *sem_full = sem_open("/p_full" , 0);
 
     if(sem_full == SEM_FAILED){
         err(EXIT_FAILURE , "semopen full");
     }
+    
 
     sem_t *sem_mutex = sem_open("/p_mutex" , 0);
 
@@ -39,13 +44,21 @@ int main(){
         err(EXIT_FAILURE , "shmopen");
     }
 
+
+
     Shared_Mem *shm_map = mmap(NULL , sizeof(Shared_Mem) , PROT_READ | PROT_WRITE , MAP_SHARED , shmfd , 0);
 
     if(shm_map == MAP_FAILED){
         err(EXIT_FAILURE , "MMAP");
     }
-    
-    
+
+
+    shm_map->consumer_id = getpid();
+
+    if(sem_post(sem_consumer) == -1){
+        err(EXIT_FAILURE , "sempost");
+    }
+
 
     char buffer[20];
 
@@ -77,6 +90,8 @@ int main(){
         printf("message received = %s.\n",buffer);
 
     }
+
+    
 
     if(sem_post(sem_consumer) == -1){
         err(EXIT_FAILURE , "sempost");
