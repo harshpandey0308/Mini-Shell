@@ -59,6 +59,7 @@ int main(){
         err(EXIT_FAILURE , "sempost");
     }
 
+    sleep(30);
 
     char buffer[20];
 

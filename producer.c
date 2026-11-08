@@ -13,11 +13,15 @@
 #include<string.h>
 #include"share.h"
 
-#define TIMED_OUT 40
+#define TIMED_OUT 20
 
 int main(){
     struct timespec tp;
 
+    int time_ = clock_gettime(CLOCK_REALTIME , &tp);
+    if(time_ == -1){
+        err(EXIT_FAILURE , "get time");
+    }
 
     sem_t *sem_consumer = sem_open("/p_consumer_alert" , O_CREAT | O_EXCL , 0644 , 0);
     if(sem_consumer ==  SEM_FAILED){
@@ -73,9 +77,28 @@ int main(){
         err(EXIT_FAILURE , "mmap");
     }
 
-    if(sem_wait(sem_consumer) == -1){
-        err(EXIT_FAILURE , "sem_consumer");
+    int timed_wait1;
+    tp.tv_sec += TIMED_OUT;
+    while((timed_wait1 = sem_timedwait(sem_consumer , &tp)) != 0){
+        if(errno == EINTR){
+            printf("failed to perform the operation due to interrupt signal : %s (code : %d).\n",strerror(errno) , errno);
+            continue;
+        }
+        else if(errno == ETIMEDOUT){
+            printf("failed to perform the operation due to time out : %s (code : %d).\n",strerror(errno) , errno);
+            exit(EXIT_FAILURE);
+        }
+        else{
+            printf("failed to perform the operation due to some error : %s (code : %d).\n",strerror(errno) , errno);
+            exit(EXIT_FAILURE);
+        }
+        break;
     }
+
+    if(timed_wait1 == 0){
+        printf("Operation Successfully Performed.\n");
+    }
+
 
     pid_t consumer_id = map_mem->consumer_id;
 
@@ -124,11 +147,6 @@ int main(){
         printf("read_index = %d.\n",map_mem->read_index);
 
     }
-    
-    int time_ = clock_gettime(CLOCK_REALTIME , &tp);
-    if(time_ == -1){
-        err(EXIT_FAILURE , "get time");
-    }
 
     
     int timed_wait;
@@ -140,6 +158,18 @@ int main(){
         }
         else if(errno == ETIMEDOUT){
             printf("failed to perform the operation due to time out : %s (code : %d).\n",strerror(errno) , errno);
+
+            int is_signal = kill(consumer_id , 0);
+
+            if(is_signal == 0){
+                printf("consumer exists and accessible");
+            }
+            else if(errno == ESRCH){
+                printf("NO process with that PID exists : %s (error code : %d).\n" , strerror(errno) , errno);
+            }
+            else if(errno == EPERM){
+                printf("Process exists but permission denied : %s (error code : %d).\n" , strerror(errno) , errno);
+            }
         }
         else{
             printf("failed to perform the operation due to some error : %s (code : %d).\n",strerror(errno) , errno);
@@ -150,19 +180,6 @@ int main(){
     if(timed_wait == 0){
         printf("Operation Successfully Performed.\n");
     }
-
-    int is_signal = kill(consumer_id , 0);
-
-    if(is_signal == 0){
-        printf("consumer exists and accessible");
-    }
-    else if(errno == ESRCH){
-        printf("NO process with that PID exists : %s (error code : %d).\n" , strerror(errno) , errno);
-    }
-    else if(errno == EPERM){
-        printf("Process exists but permission denied : %s (error code : %d).\n" , strerror(errno) , errno);
-    }
-    
 
     int mem_unmap = munmap(map_mem , sizeof(Shared_Mem));
     if(mem_unmap == -1){
