@@ -26,10 +26,10 @@ int main(){
         err(EXIT_FAILURE , "file descriptor crash");
     }
 
-    char buffer[120];
+    char buffer[125];
 
-    snprintf(buffer , 120 , "session id : %ld_%d\n producer_pid : %d\n consumer_pid : 0. \n state = INITIALIZING" ,tm.tv_nsec , pid , pid);
-    ssize_t wr_flg = write(fd , buffer , 20);
+    int len = snprintf(buffer , 125 , "session id : %ld_%d\n producer_pid : %d\n consumer_pid : 0. \n state = INITIALIZING" ,tm.tv_sec , pid , pid);
+    ssize_t wr_flg = write(fd , buffer , len);
     if(wr_flg == -1){
       err(EXIT_FAILURE , "write failed");
     }
@@ -37,13 +37,13 @@ int main(){
     lseek(fd , 0 , SEEK_SET);
 
     char rd_buf[120];
-    ssize_t rd_flg = read(fd , rd_buf , 120);
+    ssize_t rd_flg = read(fd , rd_buf , len);
     if(rd_flg == -1){
         err(EXIT_FAILURE , "read failed");
     }
-    rd_buf[rd_flg] = '\0';
+    rd_buf[rd_flg-1] = '\0';
 
-    printf("file : %s.\n", rd_buf);
+    printf("%s.\n", rd_buf);
 
     return 0;
 }
