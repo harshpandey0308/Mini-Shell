@@ -29,11 +29,27 @@ int main(){
     char buffer[125];
 
     int len = snprintf(buffer , 125 , "session id : %ld_%d\n producer_pid : %d\n consumer_pid : 0. \n state = INITIALIZING" ,tm.tv_sec , pid , pid);
+    
     ssize_t wr_flg = write(fd , buffer , len);
-    if(wr_flg == -1){
-      err(EXIT_FAILURE , "write failed");
-    }
+    while(len != 0){
+        if(errno == EINTR){
+           printf("Failed to perfom write operation due to interrupt signal : %s , errorcode: %d.\n",strerror(errno) , errno);
+           continue;
+        }
+        else if(errno == EIO){
+            printf("failed to execute write operation due to I/O failure : %s , error code : %d.\n",strerror(errno) , errno);
+            exit(EXIT_FAILURE);
+        }
+        else if(wr_flg >= 0 && wr_flg < len){
+            len = len - wr_flg;
+            wr_flg = write(fd , buffer + wr_flg , len);
+        }
+        else{
+            err(EXIT_FAILURE , "write failed");
+        }
 
+    }
+    
     lseek(fd , 0 , SEEK_SET);
 
     char rd_buf[120];
@@ -41,7 +57,7 @@ int main(){
     if(rd_flg == -1){
         err(EXIT_FAILURE , "read failed");
     }
-    rd_buf[rd_flg-1] = '\0';
+    rd_buf[rd_flg] = '\0';
 
     printf("%s.\n", rd_buf);
 
