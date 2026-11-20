@@ -4,6 +4,7 @@
 #include<unistd.h>
 #include<time.h>
 #include<sys/types.h>
+#include<string.h>
 #include<errno.h>
 #include<err.h>
 
@@ -27,27 +28,30 @@ int main(){
     }
 
     char buffer[125];
+    size_t buf_len = 125;
 
-    int len = snprintf(buffer , 125 , "session id : %ld_%d\n producer_pid : %d\n consumer_pid : 0. \n state = INITIALIZING" ,tm.tv_sec , pid , pid);
+    int len = snprintf(buffer , buf_len , "session id : %ld_%d\n producer_pid : %d\n consumer_pid : 0. \n state = INITIALIZING" ,tm.tv_sec , pid , pid);
+
+    size_t total_written = 0;
     
-    ssize_t wr_flg = write(fd , buffer , len);
-    while(len != 0){
-        if(errno == EINTR){
-           printf("Failed to perfom write operation due to interrupt signal : %s , errorcode: %d.\n",strerror(errno) , errno);
-           continue;
-        }
-        else if(errno == EIO){
-            printf("failed to execute write operation due to I/O failure : %s , error code : %d.\n",strerror(errno) , errno);
-            exit(EXIT_FAILURE);
-        }
-        else if(wr_flg >= 0 && wr_flg < len){
-            len = len - wr_flg;
-            wr_flg = write(fd , buffer + wr_flg , len);
+    while(total_written < len){
+        size_t remaining = len - total_written;
+        ssize_t wr_flg = write(fd , buffer+total_written , remaining);
+
+        if(wr_flg == -1){
+            if(errno == EINTR){
+                printf("failure occures due to the interrupt signal , error : %s (code : %d)", strerror(errno) , errno);
+                continue;
+            }
+            else{
+                printf("failure occurs due to some error signal.\n");
+            }
         }
         else{
-            err(EXIT_FAILURE , "write failed");
+            printf("message write successfully.\n");
+            total_written += wr_flg;
+            buf_len = remaining;
         }
-
     }
     
     lseek(fd , 0 , SEEK_SET);
